@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Video Processing Interface</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f4f7f6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }
+
+            .container {
+                background-color: #fff;
+                padding: 40px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                width: 80%;
+                max-width: 600px;
+            }
+
+            h1,
+            h2,
+            h3 {
+                color: #007bff;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            h2 {
+                margin-top: 30px;
+                border-bottom: 2px solid #eee;
+                padding-bottom: 10px;
+            }
+
+            .form-group {
+                margin-bottom: 25px;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: bold;
+                color: #555;
+            }
+
+            input[type="file"],
+            input[type="text"],
+            input[type="number"],
+            select,
+            button {
+                padding: 12px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                box-sizing: border-box;
+                width: 100%;
+                margin-bottom: 10px;
+                font-size: 16px;
+            }
+
+            input[type="file"] {
+                padding-top: 8px;
+            }
+
+            button {
+                background-color: #007bff;
+                color: white;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            p {
+                font-size: 0.9em;
+                color: #777;
+                margin-top: 15px;
+                font-style: italic;
+                text-align: center;
+            }
+
+            select {
+                appearance: none;
+                background-image: url('data:image/svg+xml;utf8,<svg fill="#333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+                background-repeat: no-repeat;
+                background-position-x: 98%;
+                background-position-y: 50%;
+                padding-right: 30px;
+            }
+
+            .filter-params {
+                margin-left: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Video Processing Interface</h1>
+
+            <div class="form-group">
+                <h2>Upload Video</h2>
+                <label for="uploadVideo">Choose a video file:</label>
+                <input type="file" id="uploadVideo" name="videoFile" />
+                <button onclick="uploadVideo()">Upload</button>
+                <p id="uploadStatus" style="margin-top: 10px; font-style: normal"></p>
+            </div>
+
+            <div class="form-group">
+                <h2>Delete Video</h2>
+                <button onclick="deleteVideo()">Delete</button>
+                <p id="deleteStatus" style="margin-top: 10px; font-style: normal"></p>
+            </div>
+
+            <div class="form-group">
+                <h2>Configure Filters</h2>
+                <div id="filtersListContainer" style="display: none">
+                    <h3>Filters list</h3>
+                    <div id="filtersList"></div>
+                    <button onclick="clean()">Clean</button>
+                </div>
+                <h3>Audio Filter</h3>
+                <label for="audioFilter">Choose an audio filter:</label>
+                <select id="audioFilter" name="audioFilter" onchange="showAudioParams()">
+                    <option value="">None</option>
+                    <option value="gainCompressor">Gain Compressor</option>
+                    <option value="voiceEnhancement">Voice Enhancement</option>
+                    <option value="denoiseDelay">Denoise + Delay</option>
+                    <option value="phone">Phone-like filtering (side attenuation + band pass)</option>
+                    <option value="car">Car-like filtering (side amplification + low pass)</option>
+                </select>
+
+                <div id="audioParams" class="filter-params" style="display: none">
+                    <div id="gainCompressorParams" style="display: none">
+                        <label for="gainCompressorThreshold">Compressor Threshold (start of non-linear region) (dB)</label>
+                        <input type="number" id="gainCompressorThreshold" name="gainCompressorThreshold" value="-1" />
+                        <label for="LimiterThreshold">Limiter Threshold (dB)</label>
+                        <input type="text" id="limiterThreshold" name="limiterThreshold" value="0" />
+                    </div>
+                    <div id="phoneParams" style="display: none">
+                        <label for="phoneSideGain">Side Gain (0:mono, 1:original)</label>
+                        <input type="number" id="phoneSideGain" name="phoneSideGain" max="1" min="0" value="0" />
+                        <label for="phoneFilterOrder">Filter Order</label>
+                        <input type="text" id="phoneFilterOrder" name="phoneFilterOrder" value="1" />
+                    </div>
+                    <div id="carParams" style="display: none">
+                        <label for="carSideGain">Side Gain (dB)</label>
+                        <input type="number" id="carSideGain" name="carSideGain" min="0" value="3" />
+                        <label for="carFilterOrder">Filter Order</label>
+                        <input type="text" id="carFilterOrder" name="carFilterOrder" value="1" />
+                    </div>
+                    <div id="voiceEnhancementParams" style="display: none">
+                        <label for="preemphasisAlpha">Pre-emphasis alpha:</label>
+                        <input type="number" id="preemphasisAlpha" name="preemphasisAlpha" value="3" />
+                        <label for="highPassFilter">High pass filter order:</label>
+                        <input type="number" id="highPassFilter" name="highPassFilter" value="2" />
+                    </div>
+                    <div id="denoiseDelayParams" style="display: none">
+                        <label for="noisePower">Noise Power dB:</label>
+                        <input type="number" id="noisePower" name="noisePower" max="0" value="-15" />
+                        <label for="delay">Delay (ms):</label>
+                        <input type="number" id="delay" name="delay" value="100" />
+                        <label for="delayGain">Delay gain (%):</label>
+                        <input type="number" id="delayGain" name="delayGain" min="0" max="100" value="50" />
+                    </div>
+                    <button onclick="addAudioFilter()">Add</button>
+                </div>
+
+                <h3>Video Filter</h3>
+                <label for="videoFilter">Choose a video filter:</label>
+                <select id="videoFilter" name="videoFilter" onchange="showVideoParams()">
+                    <option value="">None</option>
+                    <option value="grayscale">Grayscale</option>
+                    <option value="colorinvert">Color Invert</option>
+                    <option value="frameInterpolate">Frame Interpolation</option>
+                    <option value="upscale">Upscale</option>
+                </select>
+
+                <div id="videoParams" class="filter-params" style="display: none">
+                    <div id="frameInterpolateParams" style="display: none">
+                        <label for="frameInterpolateTargetFps">Target FPS:</label>
+                        <input type="number" id="frameInterpolateTargetFps" name="frameInterpolateTargetFps" value="60" />
+                    </div>
+                    <div id="upscaleParams" style="display: none">
+                        <label for="upscaleTargetWidth">Target Width (pixels):</label>
+                        <input type="number" id="upscaleTargetWidth" name="upscaleTargetWidth" value="1280" />
+                        <label for="upscaleTargetHeight">Target Height (pixels):</label>
+                        <input type="number" id="upscaleTargetHeight" name="upscaleTargetHeight" value="720" />
+                    </div>
+                    <button onclick="addVideoFilter()">Add</button>
+                </div>
+                <button onclick="configureFilters()">Configure Filters</button>
+                <button onclick="applyFilters()">Apply Filters</button>
+                <button onclick="stream()">Play</button>
+                <div id="videoContainer" style="display: none">
+                    <video controls width="640" height="360">
+                        <!-- fill with the correct URL and the correct format (e.g. mp4/webm)-->
+                        <source src="YOUR_VIDEO_SOURCE" type="video/YOUR_FORMAT" />
+                        Your browser does not support HTML5 video.
+                    </video>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            var filterList = [];
+            const refreshFiltersList = () => {
+                const h4Node = (text) => `<h4>${text}</h4>\n`;
+                const divNodeContainer = document.getElementById("filtersListContainer");
+                const divNode = document.getElementById("filtersList");
+                if (filterList.length === 0) {
+                    divNodeContainer.style.display = "none";
+                } else {
+                    divNodeContainer.style.display = "block";
+                    divNode.innerHTML = "";
+                    for (const filter of filterList) {
+                        let s = `${filter.name}: `;
+                        for (const prop of filter.props) {
+                            s += `${prop.name}=${prop.value}, `;
+                        }
+                        divNode.innerHTML += h4Node(s.trim());
+                    }
+                }
+            };
+
+            const getProp = (prop_name) => ({ name: prop_name, value: document.getElementById("frameInterpolateTargetFps").value });
+            const clean = () => {
+                filterList = [];
+                refreshFiltersList();
+            };
+            const addVideoFilter = () => {
+                const videoFilterSelect = document.getElementById("videoFilter");
+                const selectedVideoFilter = videoFilterSelect.value;
+                const filterConfig = { name: selectedVideoFilter, props: [] };
+                if (selectedVideoFilter === "frameinterpolate") {
+                    getProp("frameInterpolateTargetFps");
+                } else if (selectedVideoFilter === "upscale") {
+                    filterConfig.props.push(getProp("upscaleTargetWidth"), getProp("upscaleTargetHeight"));
+                }
+                filterList.push(filterConfig);
+                refreshFiltersList();
+            };
+            const addAudioFilter = () => {
+                const audioFilterSelect = document.getElementById("audioFilter");
+                const selectedAudioFilter = audioFilterSelect.value;
+                const filterConfig = { name: selectedAudioFilter, props: [] };
+                if (selectedAudioFilter === "gainCompressor") {
+                    filterConfig.props.push(getProp("compressorThreshold"), getProp("limiterThreshold"));
+                } else if (selectedAudioFilter === "voice_enhancement") {
+                    filterConfig.props.push(getProp("preemphasisAlpha"), getProp("highPassFilter"));
+                } else if (selectedAudioFilter === "denoiseDelay") {
+                    filterConfig.props.push(getProp("noisePower"), getProp("delay"), getProp("delayGain"));
+                } else if (selectedAudioFilter === "car") {
+                    filterConfig.props.push(getProp("carFilterOrder"), getProp("carSideGain"));
+                } else if (selectedAudioFilter === "phone") {
+                    filterConfig.props.push(getProp("phoneFilterOrder"), getProp("phoneSideGain"));
+                }
+                filterList.push(filterConfig);
+                refreshFiltersList();
+            };
+            const showHideParams = (fname_cur, fname) => {
+                document.getElementById(`${fname_cur}Params`).style.display = fname === fname_cur ? "block" : "none";
+            };
+            const showAudioParams = () => {
+                const audioFilter = document.getElementById("audioFilter").value;
+                document.getElementById("audioParams").style.display = audioFilter ? "block" : "none";
+                showHideParams("gainCompressor", audioFilter);
+                showHideParams("denoiseDelay", audioFilter);
+                showHideParams("voiceEnhancement", audioFilter);
+                showHideParams("car", audioFilter);
+                showHideParams("phone", audioFilter);
+            };
+
+            const showVideoParams = () => {
+                const videoFilter = document.getElementById("videoFilter").value;
+                document.getElementById("videoParams").style.display = videoFilter ? "block" : "none";
+                showHideParams("frameInterpolate", videoFilter);
+                showHideParams("upscale", videoFilter);
+            };
+            showAudioParams();
+            showVideoParams();
+            refreshFiltersList();
+
+            /**
+             * The following functions are called upon button pressure
+             * You need to add the logic to call your Python APIs.
+             * You can use the fetch method of js to perform an HTTP request
+             * @see https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+             *
+             * The added filters are available in the filterList variable which is an array of objects
+             * where each object has a name and an array of properties
+             * each property has a name and a value
+             *
+             * */
+            const uploadVideo = async () => {
+                const selectedFile = document.getElementById("uploadVideo").files[0]; // retrieves the chosen file
+                const formData = new FormData();
+                formData.append("file", file); // 'file' is the name the server will use to access the file, use the formData as the body
+                // fill me
+                console.error("Unimplemented method uploadVideo");
+            };
+
+            const deleteVideo = async () => {
+                // fill me
+                console.error("Unimplemented method deleteVideo");
+            };
+            const configureFilters = async () => {
+                // use the variable filterList
+                // fill me
+                console.error("Unimplemented method configureFilters");
+            };
+            const applyFilters = async () => {
+                // fill me
+                console.error("Unimplemented method applyFilters")
+            }
+            const stream = async () => {
+                //fill me
+                console.error("Unimplemented method stream");
+            };
+        </script>
+    </body>
+</html>
