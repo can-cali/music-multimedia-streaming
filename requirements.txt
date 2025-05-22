@@ -1,2 +1,6 @@
 scipy
 ffmpeg-python
+fastapi
+uvicorn
+soundfile
+librosa
