@@ -1,3 +1,9 @@
+"""
+Audio processing filters for the MMS project.
+
+This module provides various audio filters and effects that can be applied to audio signals.
+Functions work with numpy arrays representing audio signals and typically return processed versions.
+"""
 import numpy as np
 import scipy.signal as sg
 
@@ -8,16 +14,50 @@ def pre_emphasis(x: np.ndarray, alpha: float = 0.97) -> np.ndarray:
     return np.vstack([pre_emphasis(ch, alpha) for ch in x])
 
 def _butter(sr: int, low: float | None, high: float, order: int, btype: str):
+    """
+    Helper function to create Butterworth filter coefficients.
+    
+    Args:
+        sr: Sample rate in Hz
+        low: Lower cutoff frequency in Hz (only used for bandpass filters)
+        high: Higher cutoff frequency in Hz
+        order: Filter order (higher = sharper cutoff, but more processing)
+        btype: Filter type ('low', 'high', 'band')
+        
+    Returns:
+        Filter coefficients (b, a) for scipy.signal.lfilter
+    """
     nyq = sr / 2
     wn = high / nyq if btype != "band" else [low / nyq, high / nyq]
     return sg.butter(order, wn, btype=btype)
 
 def db_to_lin(db: float) -> float:
-    """Convert decibels to linear scale."""
+    """
+    Convert decibels to linear scale.
+    
+    Args:
+        db: Value in decibels
+        
+    Returns:
+        Equivalent value in linear scale
+    """
     return 10 ** (db / 20)
 
 def gain_compress(x: np.ndarray, threshold_db: float = -1.0, limiter_db: float = 0.0) -> np.ndarray:
-    """Apply gain compression to the input signal."""
+    """
+    Apply gain compression to the input signal.
+    
+    Compresses the dynamic range of the signal by reducing the volume of louder parts
+    while keeping quieter parts audible. Useful for enhancing vocal clarity.
+    
+    Args:
+        x: Input audio signal array
+        threshold_db: Threshold above which compression is applied (in dB)
+        limiter_db: Hard limit to prevent clipping (in dB)
+        
+    Returns:
+        Compressed audio signal
+    """
     threshold = db_to_lin(threshold_db)
     limiter = db_to_lin(limiter_db)
     
@@ -45,13 +85,30 @@ def wiener_denoise(x: np.ndarray):
     return np.vstack([sg.wiener(ch) for ch in x])
 
 def delay(x: np.ndarray, sr: int, ms: int = 100, gain: float = 0.5):
+    # Calculate delay in samples
     k = int(sr * ms / 1000)
     d = np.zeros_like(x)
+    
+    # Handle mono audio
     if x.ndim == 1:
-        d[k:] = x[:-k] * gain
-        return x + d
-    for ch in range(x.shape[0]):
-        d[ch, k:] = x[ch, :-k] * gain
+        # Ensure k is not larger than the audio length
+        if k < len(x):
+            d[k:] = x[:-k] * gain
+        else:
+            # For extreme delays, use a modulo approach
+            # This creates a "wrap-around" effect instead of silent output
+            effective_k = k % len(x) if len(x) > 0 else 0
+            d[effective_k:] = x[:-effective_k] * gain if effective_k > 0 else x * gain
+    # Handle multi-channel audio
+    else:
+        if k < x.shape[1]:  # Normal case
+            for ch in range(x.shape[0]):
+                d[ch, k:] = x[ch, :-k] * gain
+        else:  # Extreme delay case
+            effective_k = k % x.shape[1] if x.shape[1] > 0 else 0
+            for ch in range(x.shape[0]):
+                d[ch, effective_k:] = x[ch, :-effective_k] * gain if effective_k > 0 else x[ch] * gain
+    
     return x + d
 
 def denoise_delay(x: np.ndarray, sr: int, noise_db: float, delay_ms: int, delay_gain: float):

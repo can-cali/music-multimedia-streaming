@@ -1,4 +1,12 @@
 
+"""
+FastAPI server for the Music and Media Processing System (MMS).
+This server provides endpoints for uploading videos, applying audio and video filters,
+and streaming the processed results.
+
+The application uses a combination of FFmpeg for video processing,
+and audio processing libraries like librosa and soundfile.
+"""
 import subprocess, uuid, shutil
 from pathlib import Path
 from typing import List
@@ -14,7 +22,7 @@ from pydantic import BaseModel
 
 # ────────── local filters ──────────
 import audio_filters as af          # music/audio_filters.py
-import video_filter as vf          # music/video_filters.py
+import video_filters as vf          # music/video_filters.py
 
 # ────────── paths ──────────
 BASE_DIR   = Path(__file__).parent.resolve()      # …/music/
@@ -37,19 +45,37 @@ state: dict[str, Path | list | None] = {
 
 # ────────── schema ──────────
 class Prop(BaseModel):
+    """
+    Property model for filter parameters.
+    Each property has a name and a value which can be a string, float, or integer.
+    """
     name: str
     value: str | float | int
 
 class FilterCfg(BaseModel):
-    name : str                 # e.g.  grayscale / gainCompressor
-    props: List[Prop] = []     # list of (name,value) pairs
+    """
+    Filter configuration model.
+    
+    Attributes:
+        name: Name of the filter (e.g., grayscale, gainCompressor)
+        props: List of properties to configure the filter
+    """
+    name : str
+    props: List[Prop] = []     # list of (name, value) pairs
 
 class FilterList(BaseModel):
+    """
+    Container for a list of filter configurations to be applied in sequence.
+    """
     filters: List[FilterCfg]
 
 # ────────── helpers ──────────
 def _cleanup() -> None:
-    "Remove stored files and reset the state dict."
+    """
+    Remove stored files and reset the state dictionary.
+    This function deletes any uploaded or processed video files and
+    resets the application state.
+    """
     for k in ("uploaded", "processed"):
         p: Path | None = state[k]              # type: ignore
         if p and p.exists():
@@ -57,7 +83,15 @@ def _cleanup() -> None:
     state.update(uploaded=None, processed=None, filters=None)
 
 def _ffmpeg(*args: str | Path) -> None:
-    "Run ffmpeg; raise if it fails."
+    """
+    Run FFmpeg with the given arguments.
+    
+    Args:
+        *args: Command line arguments to pass to FFmpeg
+        
+    Raises:
+        RuntimeError: If the FFmpeg command fails
+    """
     cmd = ["ffmpeg", "-y", *map(str, args)]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
