@@ -26,7 +26,7 @@ import video_filters as vf          # music/video_filters.py
 
 # ────────── paths ──────────
 BASE_DIR   = Path(__file__).parent.resolve()      # …/music/
-STATIC_DIR = BASE_DIR / "static"           # …/static/
+STATIC_DIR = BASE_DIR / "static"                  # …/static/
 MEDIA_DIR  = STATIC_DIR / "media"
 UPLOAD_DIR = MEDIA_DIR / "uploads"
 PROC_DIR   = MEDIA_DIR / "processed"
@@ -192,7 +192,16 @@ async def apply_filters():
 
     # ── mux video+audio ──────────────────────────────────
     out = PROC_DIR / f"processed_{uuid.uuid4()}.mp4"
-    _ffmpeg("-i", cur_vid, "-i", wav_proc, "-c:v", "copy", "-c:a", "aac", out)
+    _ffmpeg(
+    "-i", cur_vid,          # 0: video that has just been filtered
+    "-i", wav_proc,         # 1: NEW audio you generated
+    "-map", "0:v:0",        # pick video stream 0 from first input
+    "-map", "1:a:0",        # pick audio stream 0 from second input
+    "-c:v", "copy",         # no re-encode
+    "-c:a", "aac",          # encode audio
+    "-shortest",            # stop at the shorter of the two streams
+    out
+)
 
     state["processed"] = out
     # clean stage files
