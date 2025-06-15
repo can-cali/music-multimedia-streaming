@@ -34,8 +34,8 @@
 
     <div class="form-group">
       <h2>Delete Video</h2>
-      <button onclick="deleteVideo()">Delete</button>
-      <p id="deleteStatus"></p>
+      <button id="btnDelete">Delete</button>
+      <p id="deleteStatus" class="text-sm italic"></p>
     </div>
 
     <!-- ▸ Filter configuration ------------------------------------------ -->
@@ -63,35 +63,35 @@
       <div id="audioParams" class="filter-params" style="display:none">
         <div id="gainCompressorParams" style="display:none">
           <label>Compressor Threshold (dB)</label>
-          <input type="number" id="gainCompressorThreshold" value="-1" />
+          <input type="number" id="gainCompressorThreshold" value="-20" />
           <label>Limiter Threshold (dB)</label>
-          <input type="number" id="limiterThreshold" value="0" />
+          <input type="number" id="limiterThreshold" value="-2" />
         </div>
         <div id="voiceEnhancementParams" style="display:none">
           <label>Pre-emphasis α</label>
-          <input type="number" id="preemphasisAlpha" value="0.3" step="0.05" />
+          <input type="number" id="preemphasisAlpha" value="0.95" step="0.05" />
           <label>Band-pass order</label>
-          <input type="number" id="highPassFilter" value="2" />
+          <input type="number" id="highPassFilter" value="4" />
         </div>
         <div id="denoiseDelayParams" style="display:none">
           <label>Noise power (dB)</label>
           <input type="number" id="noisePower" value="-15" />
           <label>Delay (ms)</label>
-          <input type="number" id="delay" value="100" />
+          <input type="number" id="delay" value="300" />
           <label>Delay gain (%)</label>
-          <input type="number" id="delayGain" value="50" />
+          <input type="number" id="delayGain" value="70" />
         </div>
         <div id="phoneParams" style="display:none">
           <label>Side gain (0-1)</label>
           <input type="number" id="phoneSideGain" min="0" max="1" step="0.1" value="0" />
           <label>Filter order</label>
-          <input type="number" id="phoneFilterOrder" value="1" />
+          <input type="number" id="phoneFilterOrder" value="6" />
         </div>
         <div id="carParams" style="display:none">
           <label>Side gain (dB)</label>
-          <input type="number" id="carSideGain" value="3" />
+          <input type="number" id="carSideGain" value="9" />
           <label>Filter order</label>
-          <input type="number" id="carFilterOrder" value="1" />
+          <input type="number" id="carFilterOrder" value="4" />
         </div>
         <button onclick="addAudioFilter()">Add</button>
       </div>
@@ -126,7 +126,7 @@
       <button onclick="stream()">Play</button>
 
       <div id="videoContainer" style="display:none;margin-top:20px">
-        <video controls width="640" height="360"></video>
+        <video id="preview" controls width="640" height="360"></video>
       </div>
     </div>
   </div>
@@ -147,10 +147,28 @@ async function uploadVideo(){
   const {ok,data}=await fetchJSON(`${base}/upload`,{method:"POST",body:fd});
   out.textContent = ok?`✓ ${data.file}`:`✗ ${(data.detail||"error")}`;
 }
-async function deleteVideo(){
-  const {ok,data}=await fetchJSON(`${base}/upload`,{method:"DELETE"});
-  $("deleteStatus").textContent = ok?"✓ deleted":`✗ ${(data.detail||"error")}`;
+async function deleteVideo () {
+  const res = await fetch("/cleanup", { method: "POST" });
+
+  const out = document.getElementById("deleteStatus");
+
+  if (!res.ok) {
+    const msg = await res.text();   
+    out.textContent = `✗ ${msg || "Delete failed"}`;
+    out.style.color = "red";
+    return;
+  }
+
+  document.getElementById("preview").src = "";
+  out.textContent = "✓ Deleted successfully";
+  out.style.color = "green";
+  console.log("cleanup done");
 }
+
+  document
+    .getElementById("btnDelete")
+    .addEventListener("click", deleteVideo);
+
 
 // ─── Filter list maintenance ───────────────────────────────────────────
 function refreshFilters(){

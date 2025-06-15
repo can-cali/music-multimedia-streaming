@@ -17,6 +17,7 @@ import librosa
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -146,6 +147,14 @@ async def delete_video():
         raise HTTPException(404, "Nothing to delete")
     _cleanup()
     return {"ok": True}
+
+@app.post("/cleanup")               # <-- use POST (or DELETE if you prefer)
+def cleanup_route() -> Response:
+    """
+    Delete every file in PROC_DIR and UPLOAD_DIR, then return 204 No-Content.
+    """
+    _cleanup()
+    return Response(status_code=204)
 
 @app.post("/filters")
 async def configure_filters(fl: FilterList):

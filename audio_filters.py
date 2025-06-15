@@ -43,7 +43,7 @@ def db_to_lin(db: float) -> float:
     """
     return 10 ** (db / 20)
 
-def gain_compress(x: np.ndarray, threshold_db: float = -1.0, limiter_db: float = 0.0) -> np.ndarray:
+def gain_compress(x: np.ndarray, threshold_db: float = -20.0, limiter_db: float = -2.0) -> np.ndarray:
     """
     Apply gain compression to the input signal.
     
@@ -74,7 +74,7 @@ def gain_compress(x: np.ndarray, threshold_db: float = -1.0, limiter_db: float =
     y = np.clip(y, -limiter, limiter)
     return y
 
-def voice_enhancement(x: np.ndarray, sr: int, alpha: float = 0.97, order: int = 2):
+def voice_enhancement(x: np.ndarray, sr: int, alpha: float = 0.95, order: int = 4):
     y = pre_emphasis(x, alpha)
     b, a = _butter(sr, 800, 6000, order, "band")
     return sg.lfilter(b, a, y)
@@ -84,7 +84,7 @@ def wiener_denoise(x: np.ndarray):
         return sg.wiener(x)
     return np.vstack([sg.wiener(ch) for ch in x])
 
-def delay(x: np.ndarray, sr: int, ms: int = 100, gain: float = 0.5):
+def delay(x: np.ndarray, sr: int, ms: int = 300, gain: float = 0.7):
     # Calculate delay in samples
     k = int(sr * ms / 1000)
     d = np.zeros_like(x)
@@ -114,12 +114,12 @@ def delay(x: np.ndarray, sr: int, ms: int = 100, gain: float = 0.5):
 def denoise_delay(x: np.ndarray, sr: int, noise_db: float, delay_ms: int, delay_gain: float):
     return delay(wiener_denoise(x), sr, delay_ms, delay_gain / 100)
 
-def phone_filter(x: np.ndarray, sr: int, side_gain: float = 0.0, order: int = 1):
+def phone_filter(x: np.ndarray, sr: int, side_gain: float = 0.0, order: int = 6):
     mono = x.mean(axis=0) if x.ndim > 1 else x
     b, a = _butter(sr, 800, 12000, order, "band")
     return sg.lfilter(b, a, mono * (1 - side_gain))
 
-def car_filter(x: np.ndarray, sr: int, side_gain_db: float = 3.0, order: int = 1):
+def car_filter(x: np.ndarray, sr: int, side_gain_db: float = 9.0, order: int = 4):
     g = db_to_lin(side_gain_db)
     if x.ndim == 1:
         x = np.vstack([x, x])
